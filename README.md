@@ -65,3 +65,16 @@ Unit and Integration tests cover Port specifications and Adapters. To run the te
 ```bash
 docker-compose exec backend python -m pytest tests/
 ```
+
+
+## Security Notice ⚠️
+
+**This application is currently configured for LOCAL DEVELOPMENT ONLY.**
+
+Please be aware of the following security limitations before attempting to deploy this project to a public-facing server or the internet:
+
+1. **Hardcoded Database Credentials**: The `docker-compose.yml` and backend `config.py` contain hardcoded default PostgreSQL credentials (`chatpdf_user` / `chatpdf_password`). In a production environment, these must be replaced with securely injected environment variables.
+2. **Simplified Authentication**: The current user registration and login endpoints use a simplified, non-secure hashing method (`"hash_" + password`) and return a hardcoded `"fake-token"` instead of a cryptographically secure JWT (JSON Web Token).
+3. **CORS/XSRF Disabled**: The Streamlit frontend currently has Cross-Origin Resource Sharing (CORS) and Cross-Site Request Forgery (XSRF) protections disabled to facilitate easy access across local LAN devices. 
+
+If you plan to deploy this application online, you **must** implement secure password hashing (e.g., `bcrypt`), robust JWT authentication, strict CORS policies, and secure secret management for production use.
