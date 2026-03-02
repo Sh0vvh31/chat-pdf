@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # テスト・ローカル開発用DB (PostgreSQL + pgvector)
+  db:
+    image: ankane/pgvector:v0.5.1
+    container_name: chatpdf_db
+    environment:
+      POSTGRES_USER: chatpdf_user
+      POSTGRES_PASSWORD: chatpdf_password
+      POSTGRES_DB: chatpdf_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 初期起動時に自動で CREATE EXTENSION vector; を実行するスクリプトをマウント
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatpdf_user -d chatpdf_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # バックエンド (FastAPI & テスト実行用)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chatpdf_backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      # コンテナ内からDBへ接続するため host を "db" (サービス名) に変更
+      POSTGRES_HOST: db
+      # コンテナ内からホストPC上のOllamaへ接続するためのURL (Windows/Mac版 Docker Desktop用)
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # フロントエンド (Streamlit)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatpdf_frontend
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "0.0.0.0:8501:8501"
+    environment:
+      # バックエンドのAPI URL (docker-composeのネットワーク内)
+      API_BASE_URL: "http://backend:8000/api/v1"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
